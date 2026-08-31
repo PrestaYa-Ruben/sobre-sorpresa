@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PrestaYa - Sobres Sorpresa</title>
+<style>
+  :root {
+    --navy: #0b2545;
+    --navy-deep: #071a33;
+    --navy-light: #123a6b;
+    --green: #17c964;
+    --green-deep: #0e9c4d;
+    --gold: #f2c94c;
+    --text-light: #0b2545;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #ffffff;
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 24px 16px 40px;
+    overflow-y: auto;
+  }
+
+  .brand {
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: 1px;
+    transform: skewX(-8deg);
+    margin-bottom: 2px;
+  }
+  .brand span { color: var(--green); }
+
+  .navbar {
+    display: flex;
+    gap: 6px;
+    background: #eef1f4;
+    border-radius: 999px;
+    padding: 4px;
+    margin-top: 14px;
+    margin-bottom: 18px;
+  }
+
+  .navbar button {
+    border: none;
+    background: transparent;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    color: rgba(11,37,69,0.55);
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .navbar button.active {
+    background: var(--navy);
+    color: #fff;
+  }
+
+  .view { display: none; width: 100%; align-items: center; flex-direction: column; }
+  .view.active { display: flex; }
+
+  .subtitle {
+    font-size: 13px;
+    opacity: 0.7;
+    margin: 10px 0 26px;
+    text-align: center;
+    max-width: 320px;
+  }
+
+  .envelopes-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px 14px;
+    width: 100%;
+    max-width: 380px;
+    margin-bottom: 24px;
+  }
+
+  .envelope {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    cursor: pointer;
+    perspective: 500px;
+    filter: drop-shadow(0 5px 6px rgba(11,37,69,0.2));
+  }
+
+  .envelope.locked-visual {
+    opacity: 0.4;
+    filter: grayscale(45%) drop-shadow(0 5px 6px rgba(11,37,69,0.1));
+    pointer-events: none;
+  }
+
+  .envelope.auto-revealed {
+    opacity: 0.75;
+    filter: blur(0.6px) grayscale(10%) drop-shadow(0 5px 6px rgba(11,37,69,0.1));
+    pointer-events: none;
+  }
+
+  .env-frame {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 4px;
+    box-sizing: border-box;
+    background: repeating-linear-gradient(45deg, #d13b2c 0 6px, #ffffff 6px 9px, #1e3a8a 9px 15px, #ffffff 15px 18px);
+  }
+
+  .env-canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+  }
+
+  .letter {
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    top: 8%;
+    bottom: 8%;
+    background: #fdfdfd;
+    border: 2px dashed rgba(11,37,69,0.3);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(6%);
+    transition: transform 0.55s cubic-bezier(.2,.8,.25,1) 0.35s;
+    z-index: 1;
+    box-shadow: 0 2px 6px rgba(11,37,69,0.15);
+  }
+
+  .envelope.opened .letter {
+    transform: translateY(-64%);
+    z-index: 10;
+  }
+
+  .env-body {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .env-pocket {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 78%;
+    background: linear-gradient(160deg, #ffffff, #f0f1f3);
+    border: 2px solid var(--navy);
+    border-radius: 10px;
+    box-shadow: 0 3px 0 rgba(11,37,69,0.2);
+    overflow: hidden;
+  }
+
+  .env-pocket::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 100%;
+    background:
+      linear-gradient(115deg, transparent 48%, rgba(11,37,69,0.14) 50%, transparent 52%),
+      linear-gradient(245deg, transparent 48%, rgba(11,37,69,0.14) 50%, transparent 52%);
+  }
+
+  .env-flap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 55%;
+    background: linear-gradient(160deg, #ffffff, #eceef1);
+    clip-path: polygon(7% 0, 93% 0, 100% 10%, 50% 100%, 0 10%);
+    box-shadow: inset 0 0 0 2px var(--navy);
+    transform-origin: top center;
+    transform: rotateX(0deg);
+    transition: transform 0.45s ease;
+    z-index: 3;
+  }
+
+  .envelope.opened .env-flap {
+    transform: rotateX(180deg);
+    z-index: 0;
+  }
+
+  .env-seal {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle at 35% 30%, #e0463a, #b5261a 60%, #7c150e 100%);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 50%;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 900;
+    color: #fdfdfd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 -2px 3px rgba(0,0,0,0.2);
+    transition: opacity 0.2s ease, transform 0.3s ease;
+  }
+
+  .envelope.opened .env-seal {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+
+  .ticket {
+    position: relative;
+    width: 82%;
+    padding: 8px 4px;
+    border-radius: 7px;
+    border: 2px dashed rgba(255,255,255,0.65);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ticket.win { background: var(--green-deep); }
+  .ticket.lose { background: #c7ced6; border-color: rgba(11,37,69,0.25); }
+  .ticket.neutral { background: #aeb8c4; border-color: rgba(11,37,69,0.25); }
+
+  .ticket::before, .ticket::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    background: #fdfdfd;
+    border-radius: 50%;
+    transform: translateY(-50%);
+  }
+  .ticket::before { left: -5px; }
+  .ticket::after { right: -5px; }
+
+  .ticket .num {
+    font-size: 16px;
+    font-weight: 900;
+    color: #fff;
+  }
+  .ticket.lose .num { color: var(--navy); font-size: 14px; }
+  .ticket.neutral .num { font-size: 15px; }
+
+  .ticket .lbl {
+    font-size: 7.5px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    letter-spacing: 0.3px;
+    margin-top: 1px;
+  }
+  .ticket.lose .lbl { color: rgba(11,37,69,0.7); }
+
+  .status {
+    min-height: 50px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    max-width: 320px;
+  }
+
+  .btn {
+    margin-top: 10px;
+    padding: 13px 32px;
+    border: none;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    background: var(--green);
+    color: #06331a;
+  }
+
+  .btn-secondary {
+    background: #eef1f4 !important;
+    color: var(--navy) !important;
+  }
+
+  .btn-primary {
+    background: var(--green);
+    color: #06331a;
+  }
+
+  .confetti-piece {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 999;
+    will-change: transform, opacity;
+  }
+
+  .gen-card {
+    background: #fff;
+    border: 1px solid #e2e5ea;
+    border-radius: 16px;
+    padding: 22px;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .gen-card label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  .gen-card label:first-of-type { margin-top: 0; }
+
+  .gen-card input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #e2e5ea;
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--navy);
+    background: #fafbfc;
+  }
+
+  .gen-card input:focus {
+    outline: none;
+    border-color: var(--green);
+    background: #fff;
+  }
+
+  .gen-hint {
+    font-size: 11px;
+    opacity: 0.55;
+    margin-top: 4px;
+  }
+
+  .gen-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .gen-actions .btn { flex: 1; margin-top: 0; }
+
+  .gen-result {
+    margin-top: 18px;
+    background: #f0f4f2;
+    border: 1.5px dashed var(--green-deep);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 13px;
+    word-break: break-all;
+    color: var(--navy);
+    min-height: 20px;
+  }
+
+  .gen-copied {
+    text-align: center;
+    font-size: 13px;
+    color: var(--green-deep);
+    font-weight: 700;
+    margin-top: 10px;
+    min-height: 18px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="brand">PRESTA<span>YA</span></div>
+
+  <div class="navbar" id="navbar" style="display:none;">
+    <button class="active" id="tabTablero" onclick="showView('tablero')">Sobres</button>
+    <button id="tabGenerador" onclick="showView('generador')">Generador</button>
+  </div>
+
+  <div class="view active" id="viewTablero">
+    <div class="subtitle">POR FAVOR ENVIAR CAPTURA DE PANTALLA SOLO SI GANAS, DE LO CONTRARIO NO</div>
+
+    <div class="envelopes-row" id="envelopesRow"></div>
+
+    <div class="status" id="status">Elige y abre 2 de los 5 sobres</div>
+    <button class="btn show" id="restartBtn">Reiniciar</button>
+  </div>
+
+  <div class="view" id="viewGenerador">
+    <div class="gen-card">
+      <label for="genBaseUrl">Link base del juego</label>
+      <input type="text" id="genBaseUrl" value="">
+      <div class="gen-hint">Se completa solo con la dirección actual de esta página.</div>
+
+      <label for="genClienteId">Nombre o código del cliente</label>
+      <input type="text" id="genClienteId" placeholder="Ej: juanperez o su número de teléfono">
+      <div class="gen-hint">Usa algo único para identificarlo.</div>
+
+      <label for="genRonda">Número de ronda</label>
+      <input type="number" id="genRonda" value="1" min="1">
+      <div class="gen-hint">Súbelo cada vez que le des una nueva oportunidad al mismo cliente.</div>
+
+      <div class="gen-actions">
+        <button class="btn btn-primary" onclick="generarLinkTab()">Generar link</button>
+        <button class="btn btn-secondary" onclick="copiarLinkTab()">Copiar</button>
+      </div>
+
+      <div class="gen-result" id="genResultBox">El link generado aparecerá aquí</div>
+      <div class="gen-copied" id="genCopiedMsg"></div>
+    </div>
+  </div>
+
+<script>
+  const TOTAL_ENVELOPES = 6;
+  const MAX_ATTEMPTS = 2;
+  // 2 ganadores, 4 perdedores
+  const PRIZES = [
+    { win: true,  num: '1', label: '1 BOLETA' },
+    { win: true,  num: '1', label: '1 BOLETA' },
+    { win: false, num: 'X', label: 'NO GANASTE' },
+    { win: false, num: 'X', label: 'NO GANASTE' },
+    { win: false, num: 'X', label: 'NO GANASTE' },
+    { win: false, num: 'X', label: 'NO GANASTE' }
+  ];
+
+  const urlParams = new URLSearchParams(location.search);
+  const clienteId = urlParams.get('cliente');
+  const isClientLink = !!clienteId;
+  const ronda = urlParams.get('ronda') || '1';
+  const STORAGE_KEY = 'prestaya_sobressorpresa_jugado_' + clienteId + '_' + ronda;
+  const yaJugoEsteLink = isClientLink && localStorage.getItem(STORAGE_KEY) === '1';
+
+  let attemptsUsed = 0;
+  let wonTotal = 0;
+  let gameOver = false;
+  let envelopesData = [];
+
+  const envelopesRow = document.getElementById('envelopesRow');
+  const status = document.getElementById('status');
+  const restartBtn = document.getElementById('restartBtn');
+  restartBtn.addEventListener('click', () => location.reload());
+
+  if (!isClientLink) {
+    document.getElementById('navbar').style.display = 'flex';
+    document.getElementById('genBaseUrl').value = location.origin + location.pathname;
+  } else {
+    restartBtn.remove();
+  }
+
+  function showView(view) {
+    document.getElementById('viewTablero').classList.toggle('active', view === 'tablero');
+    document.getElementById('viewGenerador').classList.toggle('active', view === 'generador');
+    document.getElementById('tabTablero').classList.toggle('active', view === 'tablero');
+    document.getElementById('tabGenerador').classList.toggle('active', view === 'generador');
+  }
+
+  function limpiarId(texto) {
+    return texto.trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  function generarLinkTab() {
+    const base = document.getElementById('genBaseUrl').value.trim();
+    const idRaw = document.getElementById('genClienteId').value;
+    const rondaVal = document.getElementById('genRonda').value || '1';
+    const resultBox = document.getElementById('genResultBox');
+    const copiedMsg = document.getElementById('genCopiedMsg');
+    copiedMsg.textContent = '';
+
+    if (!idRaw.trim()) {
+      resultBox.textContent = 'Escribe el nombre o código del cliente primero.';
+      return;
+    }
+
+    const id = limpiarId(idRaw);
+    const baseConSlash = base.endsWith('/') ? base : base + '/';
+    resultBox.textContent = `${baseConSlash}?cliente=${id}&ronda=${rondaVal}`;
+  }
+
+  function copiarLinkTab() {
+    const resultBox = document.getElementById('genResultBox');
+    const copiedMsg = document.getElementById('genCopiedMsg');
+    const texto = resultBox.textContent;
+
+    if (!texto || texto.includes('aparecerá aquí') || texto.includes('Escribe el')) {
+      generarLinkTab();
+      return;
+    }
+
+    navigator.clipboard.writeText(texto).then(() => {
+      copiedMsg.textContent = '✔ Link copiado, listo para enviar por WhatsApp';
+      setTimeout(() => { copiedMsg.textContent = ''; }, 2500);
+    }).catch(() => {
+      copiedMsg.textContent = 'No se pudo copiar automáticamente, cópialo manualmente.';
+    });
+  }
+
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function playOpenSound() {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(340, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.36);
+  }
+
+  function playWinSound() {
+    const ctx = getAudioCtx();
+    const notes = [523.25, 659.25, 783.99];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.09);
+      gain.gain.setValueAtTime(0.001, ctx.currentTime + i * 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + i * 0.09 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.09 + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.09);
+      osc.stop(ctx.currentTime + i * 0.09 + 0.4);
+    });
+  }
+
+  function launchConfetti(el) {
+    const rect = el.getBoundingClientRect();
+    const originX = rect.left + rect.width / 2;
+    const originY = rect.top + rect.height / 2;
+    const colors = ['#17c964', '#0e9c4d', '#f2c94c', '#0b2545', '#ffffff'];
+    const pieceCount = 60;
+
+    for (let i = 0; i < pieceCount; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.left = originX + 'px';
+      piece.style.top = originY + 'px';
+
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 140 + Math.random() * 180;
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance - 80;
+      const rotation = Math.random() * 1000 - 500;
+      const duration = 850 + Math.random() * 650;
+      const size = 5 + Math.random() * 6;
+
+      piece.style.width = size + 'px';
+      piece.style.height = size + 'px';
+      if (Math.random() > 0.5) piece.style.borderRadius = '50%';
+
+      document.body.appendChild(piece);
+
+      const animation = piece.animate([
+        { transform: 'translate(-50%, -50%) rotate(0deg)', opacity: 1 },
+        { transform: `translate(${dx - 50}%, ${dy + 110}px) rotate(${rotation}deg)`, opacity: 0 }
+      ], { duration, easing: 'cubic-bezier(.2,.7,.3,1)' });
+
+      animation.onfinish = () => piece.remove();
+    }
+  }
+
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function buildTicketHTML(prize) {
+    if (prize.win) {
+      return `<div class="ticket win"><div class="num">${prize.num}</div><div class="lbl">${prize.label}</div></div>`;
+    }
+    return `<div class="ticket lose"><div class="num">✕</div><div class="lbl">${prize.label}</div></div>`;
+  }
+
+  function buildNeutralTicketHTML() {
+    return `<div class="ticket neutral"><div class="num">✉</div><div class="lbl">SORPRESA</div></div>`;
+  }
+
+  function canInteract(data) {
+    return !gameOver && !data.revealed && attemptsUsed < MAX_ATTEMPTS;
+  }
+
+  function buildEnvelopes() {
+    envelopesData = shuffle(PRIZES).map((prize, i) => ({ prize, revealed: false, index: i }));
+
+    envelopesRow.innerHTML = '';
+    envelopesData.forEach((data, i) => {
+      const envelope = document.createElement('div');
+      envelope.className = 'envelope';
+      envelope.dataset.index = i;
+
+      const frame = document.createElement('div');
+      frame.className = 'env-frame';
+
+      const canvas = document.createElement('div');
+      canvas.className = 'env-canvas';
+
+      const letter = document.createElement('div');
+      letter.className = 'letter';
+      letter.innerHTML = buildNeutralTicketHTML();
+      canvas.appendChild(letter);
+      data.letterEl = letter;
+
+      const body = document.createElement('div');
+      body.className = 'env-body';
+      body.innerHTML = `
+        <div class="env-pocket"></div>
+        <div class="env-flap"></div>
+        <div class="env-seal">P</div>
+      `;
+      canvas.appendChild(body);
+
+      frame.appendChild(canvas);
+      envelope.appendChild(frame);
+      envelopesRow.appendChild(envelope);
+
+      envelope.addEventListener('click', () => {
+        if (!canInteract(data)) return;
+        openEnvelope(envelope, data, true);
+      });
+    });
+  }
+
+  function openEnvelope(envelope, data, countsAsAttempt) {
+    if (data.revealed) return;
+    data.revealed = true;
+
+    if (data.letterEl) {
+      data.letterEl.innerHTML = buildTicketHTML(data.prize);
+    }
+
+    envelope.classList.add('opened');
+    playOpenSound();
+
+    if (countsAsAttempt) {
+      attemptsUsed++;
+      if (data.prize.win) {
+        setTimeout(() => {
+          wonTotal += 1;
+          launchConfetti(envelope);
+          playWinSound();
+        }, 450);
+      }
+      updateStatus();
+      if (attemptsUsed >= MAX_ATTEMPTS) {
+        finishGame();
+      }
+    } else if (data.prize.win) {
+      setTimeout(() => {
+        launchConfetti(envelope);
+        playWinSound();
+      }, 450);
+    }
+  }
+
+  function updateStatus() {
+    if (gameOver) return;
+    const remaining = MAX_ATTEMPTS - attemptsUsed;
+    if (remaining > 0) {
+      status.textContent = `Te ${remaining === 1 ? 'queda' : 'quedan'} ${remaining} sobre${remaining === 1 ? '' : 's'} más por abrir`;
+    }
+  }
+
+  function finishGame() {
+    gameOver = true;
+    status.textContent = 'Descubriendo el resto de los sobres...';
+
+    const remainingEnvelopes = Array.from(document.querySelectorAll('.envelope')).filter((e, i) => !envelopesData[i].revealed);
+    remainingEnvelopes.forEach(e => e.classList.add('locked-visual'));
+
+    setTimeout(() => {
+      revealRemaining(remainingEnvelopes, 0);
+    }, 900);
+  }
+
+  function revealRemaining(envelopes, i) {
+    if (i >= envelopes.length) {
+      setTimeout(showFinalResult, 700);
+      return;
+    }
+    const envelope = envelopes[i];
+    const idx = parseInt(envelope.dataset.index);
+    const data = envelopesData[idx];
+    envelope.classList.remove('locked-visual');
+    envelope.classList.add('auto-revealed');
+
+    openEnvelope(envelope, data, false);
+
+    setTimeout(() => revealRemaining(envelopes, i + 1), 1300);
+  }
+
+  function showFinalResult() {
+    if (wonTotal > 0) {
+      status.innerHTML = `¡Felicidades! En total ganaste ${wonTotal} boleta(s) para la rifa`;
+    } else {
+      status.textContent = 'No ganaste esta vez. ¡Gracias por participar!';
+    }
+    if (isClientLink) {
+      localStorage.setItem(STORAGE_KEY, '1');
+    }
+  }
+
+  function showLockedScreen() {
+    envelopesRow.innerHTML = '';
+    if (restartBtn.parentNode) restartBtn.remove();
+    status.textContent = 'Este link ya fue utilizado. Solo se permite una jugada por link.';
+  }
+
+  if (yaJugoEsteLink) {
+    showLockedScreen();
+  } else {
+    buildEnvelopes();
+  }
+</script>
+
+</body>
+</html>
